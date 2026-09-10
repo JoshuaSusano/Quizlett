@@ -6,57 +6,70 @@ use App\Models\Users;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
+        try {
+            $validated = $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+                'password' => ['required', 'string', 'min:8', 'confirmed'],
+            ]);
 
-        $user = Users::create([
-            'name' => $validated['name'],
-            'email' => strtolower($validated['email']),
-            'password' => $validated['password'],
-            'role' => 'student',
-        ]);
+            $user = Users::create([
+                'name' => $validated['name'],
+                'email' => strtolower($validated['email']),
+                'password' => $validated['password'],
+                'role' => 'student',
+            ]);
 
-        Auth::login($user);
-        $request->session()->regenerate();
+            Auth::login($user);
+            $request->session()->regenerate();
 
-        return response()->json([
-            'message' => 'Registration successful.',
-            'user' => $this->userPayload($user),
-        ], 201);
+            return response()->json([
+                'message' => 'Registration successful.',
+                'user' => $this->userPayload($user),
+            ], 201);
+        } catch (Throwable $exception) {
+            Log::error('Registration failed.', ['exception' => $exception]);
+
+            return response()->json(['message' => 'Registration is temporarily unavailable.'], 503);
+        }
     }
 
     public function login(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
-        ]);
+        try {
+            $validated = $request->validate([
+                'email' => ['required', 'email'],
+                'password' => ['required', 'string'],
+            ]);
 
         $credentials = [
             'email' => strtolower($validated['email']),
             'password' => $validated['password'],
         ];
 
-        if (! Auth::attempt($credentials)) {
+            if (! Auth::attempt($credentials)) {
+                return response()->json([
+                    'message' => 'Invalid email or password.',
+                ], 401);
+            }
+
+            $request->session()->regenerate();
+
             return response()->json([
-                'message' => 'Invalid email or password.',
-            ], 401);
+                'message' => 'Login successful.',
+                'user' => $this->userPayload($request->user()),
+            ]);
+        } catch (Throwable $exception) {
+            Log::error('Login failed.', ['exception' => $exception]);
+
+            return response()->json(['message' => 'Login is temporarily unavailable.'], 503);
         }
-
-        $request->session()->regenerate();
-
-        return response()->json([
-            'message' => 'Login successful.',
-            'user' => $this->userPayload($request->user()),
-        ]);
     }
 
     public function me(Request $request): JsonResponse

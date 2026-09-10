@@ -1,7 +1,20 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/health/database', function () {
+    try {
+        DB::connection()->getPdo();
+
+        return response()->json(['status' => 'ok']);
+    } catch (Throwable $exception) {
+        report($exception);
+
+        return response()->json(['status' => 'unavailable'], 503);
+    }
+});
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
