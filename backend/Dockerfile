@@ -16,8 +16,10 @@ RUN composer install --no-dev --no-scripts --optimize-autoloader --no-interactio
 RUN chown -R www-data:www-data storage bootstrap/cache
 
 COPY docker/000-default.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/start.sh /usr/local/bin/start-quizlett
+RUN chmod +x /usr/local/bin/start-quizlett
 
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 
 EXPOSE 80
-CMD ["apache2-foreground"]
+CMD ["start-quizlett"]
